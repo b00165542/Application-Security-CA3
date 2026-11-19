@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local database
+*.db
+*.sqlite3
+
+# Uploaded product images (keep bundled placeholders)
+static/images/*
+!static/images/placeholder-*.svg
+
+# Environment / IDE
+.env
+.vscode/
+.idea/

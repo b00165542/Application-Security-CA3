@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Your Cart{% endblock %}
+{% block content %}
+<h1>Your cart</h1>
+{% if summary.is_empty %}
+    <p class="muted">Your cart is empty.</p>
+    <a class="btn" href="/products">Browse the menu</a>
+{% else %}
+<table class="table">
+    <thead>
+    <tr><th>Product</th><th>Unit price</th><th>Quantity</th><th>Line total</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for line in summary.lines %}
+        <tr>
+            <td><a href="/products/{{ line.product.id }}">{{ line.product.name }}</a></td>
+            <td>{{ line.product.price | eur }}</td>
+            <td>
+                <form method="post" action="/cart/update" class="inline">
+                    <input type="hidden" name="product_id" value="{{ line.product.id }}">
+                    <input type="number" name="quantity" value="{{ line.quantity }}" min="0" max="99" class="qty-input" aria-label="Quantity">
+                    <button type="submit" class="btn btn-small btn-secondary">Update</button>
+                </form>
+            </td>
+            <td>{{ line.line_total | eur }}</td>
+            <td>
+                <form method="post" action="/cart/remove/{{ line.product.id }}" class="inline">
+                    <button type="submit" class="btn btn-small btn-danger">Remove</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<div class="cart-summary">
+    {% include "_cart_totals.html" %}
+    <div class="actions">
+        <form method="post" action="/cart/clear" class="inline">
+            <button type="submit" class="btn btn-secondary">Empty cart</button>
+        </form>
+        <a class="btn" href="/cart/checkout">Proceed to checkout</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

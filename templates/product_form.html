@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit product' if product else 'New product' }}{% endblock %}
+{% block content %}
+<p><a href="/admin#products">&larr; Back to admin</a></p>
+<div class="narrow-wide card padded">
+    <h1>{{ 'Edit "' ~ product.name ~ '"' if product else 'New product' }}</h1>
+    <form method="post"
+          action="{{ '/products/' ~ product.id ~ '/edit' if product else '/products' }}"
+          enctype="multipart/form-data" class="stacked">
+        <label>Name
+            <input type="text" name="name" value="{{ form.name or '' }}" required maxlength="100">
+        </label>
+        <label>Type
+            <select name="type" required>
+                <option value="coffee" {% if form.type == 'coffee' %}selected{% endif %}>Coffee</option>
+                <option value="chocolate" {% if form.type == 'chocolate' %}selected{% endif %}>Hot chocolate</option>
+            </select>
+        </label>
+        <label>Price (€)
+            <input type="number" name="price" value="{{ form.price or '' }}" step="0.01" min="0.01" max="1000" required>
+        </label>
+        <label>Description
+            <textarea name="description" rows="4" maxlength="1000">{{ form.description or '' }}</textarea>
+        </label>
+        {% if product %}
+            <div>
+                <span class="muted small">Current image:</span><br>
+                <img class="thumb large" src="{{ url_for('static', path=(product.image_path or ('images/placeholder-' ~ product.type ~ '.svg'))) }}" alt="">
+            </div>
+        {% endif %}
+        <label>{{ 'Replace image' if product else 'Image' }} <small class="muted">(optional; PNG, JPG, GIF or WEBP, max 5 MB)</small>
+            <input type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp">
+        </label>
+        <button type="submit" class="btn">{{ 'Save changes' if product else 'Create product' }}</button>
+    </form>
+</div>
+{% endblock %}

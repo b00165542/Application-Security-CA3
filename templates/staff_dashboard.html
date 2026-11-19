@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Orders Dashboard{% endblock %}
+{% block content %}
+<h1>Order fulfilment</h1>
+<div class="filters">
+    <a class="pill {% if view == 'active' %}active{% endif %}" href="/orders/dashboard?view=active">Active</a>
+    <a class="pill {% if view == 'past' %}active{% endif %}" href="/orders/dashboard?view=past">Past</a>
+    <a class="pill {% if view == 'all' %}active{% endif %}" href="/orders/dashboard?view=all">All</a>
+</div>
+
+{% if orders %}
+<div class="order-board">
+    {% for order in orders %}
+        <div class="card padded order-card">
+            <div class="order-head">
+                <h3><a href="/orders/{{ order.id }}">#{{ order.id }}</a> &middot; {{ order.customer_name }}</h3>
+                <span class="status status-{{ order.status }}">{{ order.status }}</span>
+            </div>
+            <p class="muted small">
+                {{ order.created_at | dt }} &middot;
+                <strong>{{ order.order_type | upper }}</strong>
+                {% if order.user %}&middot; {{ order.user.username }} ({{ order.user.role }}){% else %}&middot; guest{% endif %}
+            </p>
+
+            {% if order.order_type == 'delivery' %}
+                <p><strong>Address:</strong> <span class="prewrap">{{ order.delivery_address }}</span></p>
+            {% endif %}
+            <p><strong>Instructions:</strong> <span class="prewrap">{{ order.delivery_instructions or '—' }}</span></p>
+
+            <ul class="summary-list">
+                {% for item in order.items %}
+                    <li><span>{{ item.quantity }} &times; {{ item.product_name }}</span><span>{{ item.line_total | eur }}</span></li>
+                {% endfor %}
+            </ul>
+            <p class="order-total">
+                Total: <strong>{{ order.total_price | eur }}</strong>
+                {% if order.discount_applied > 0 %}<small class="muted">(discount {{ order.discount_applied | eur }})</small>{% endif %}
+            </p>
+
+            <form method="post" action="/orders/{{ order.id }}/status" class="inline-form">
+                <input type="hidden" name="next" value="/orders/dashboard?view={{ view }}">
+                <select name="status" aria-label="Status">
+                    {% for s in statuses %}
+                        {% if not (order.order_type == 'pickup' and s == 'delivering') %}
+                            <option value="{{ s }}" {% if s == order.status %}selected{% endif %}>{{ s }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-small">Update</button>
+            </form>
+        </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="muted">No {{ view if view != 'all' else '' }} orders.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block content %}
+<p><a href="/products">&larr; Back to menu</a></p>
+<div class="detail">
+    <img class="detail-image"
+         src="{{ url_for('static', path=(product.image_path or ('images/placeholder-' ~ product.type ~ '.svg'))) }}"
+         alt="{{ product.name }}">
+    <div>
+        <h1>{{ product.name }}</h1>
+        <span class="tag tag-{{ product.type }}">{{ product.type }}</span>
+        <p>{{ product.description }}</p>
+        <p class="price big">{{ product.price | eur }}</p>
+        <form method="post" action="/cart/add" class="inline-form">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="next" value="/cart">
+            <label>Quantity
+                <input type="number" name="quantity" value="1" min="1" max="99" class="qty-input">
+            </label>
+            <button type="submit" class="btn">Add to cart</button>
+        </form>
+        {% if current_user and current_user.role == 'admin' %}
+            <p><a href="/products/{{ product.id }}/edit">Edit product</a></p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Order Confirmed{% endblock %}
+{% block content %}
+<div class="card padded narrow-wide">
+    <h1>&#10004; Payment successful!</h1>
+    <p>Thank you, <strong>{{ order.customer_name }}</strong>. Your order <strong>#{{ order.id }}</strong> has been placed.</p>
+    <p>
+        {% if order.order_type == 'delivery' %}
+            We will deliver it to: <em>{{ order.delivery_address }}</em>
+        {% else %}
+            Please collect it at the counter &ndash; we will call your name.
+        {% endif %}
+    </p>
+    {% if order.delivery_instructions %}
+        <p>Instructions: <em>{{ order.delivery_instructions }}</em></p>
+    {% endif %}
+    {% include "_order_items.html" %}
+    <p class="actions">
+        <a class="btn" href="/products">Order something else</a>
+        {% if current_user %}<a class="btn btn-secondary" href="/orders/my">View my orders</a>{% endif %}
+    </p>
+</div>
+{% endblock %}

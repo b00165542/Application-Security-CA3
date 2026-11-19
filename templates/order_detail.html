@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<p>
+    {% if current_user.role in ['staff', 'admin'] %}
+        <a href="/orders/dashboard">&larr; Back to dashboard</a>
+    {% else %}
+        <a href="/orders/my">&larr; Back to my orders</a>
+    {% endif %}
+</p>
+<div class="card padded">
+    <div class="order-head">
+        <h1>Order #{{ order.id }}</h1>
+        <span class="status status-{{ order.status }}">{{ order.status }}</span>
+    </div>
+    <dl class="details">
+        <dt>Placed</dt><dd>{{ order.created_at | dt }}</dd>
+        <dt>Customer</dt><dd>{{ order.customer_name }}{% if order.user %} ({{ order.user.username }}){% else %} (guest){% endif %}</dd>
+        <dt>Type</dt><dd>{{ order.order_type | capitalize }}</dd>
+        {% if order.order_type == 'delivery' %}
+            <dt>Address</dt><dd class="prewrap">{{ order.delivery_address }}</dd>
+        {% endif %}
+        <dt>Instructions</dt><dd class="prewrap">{{ order.delivery_instructions or '—' }}</dd>
+    </dl>
+    {% include "_order_items.html" %}
+
+    {% if current_user.role in ['staff', 'admin'] %}
+        <form method="post" action="/orders/{{ order.id }}/status" class="inline-form">
+            <input type="hidden" name="next" value="/orders/{{ order.id }}">
+            <label>Update status
+                <select name="status">
+                    {% for s in statuses %}
+                        {% if not (order.order_type == 'pickup' and s == 'delivering') %}
+                            <option value="{{ s }}" {% if s == order.status %}selected{% endif %}>{{ s }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="btn btn-small">Save</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

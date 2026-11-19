@@ -1,0 +1,22 @@
+{# Expects `product` in scope. #}
+<div class="card product-card">
+    <a href="/products/{{ product.id }}">
+        <img class="product-image"
+             src="{{ url_for('static', path=(product.image_path or ('images/placeholder-' ~ product.type ~ '.svg'))) }}"
+             alt="{{ product.name }}">
+    </a>
+    <div class="card-body">
+        <h3><a href="/products/{{ product.id }}">{{ product.name }}</a></h3>
+        <span class="tag tag-{{ product.type }}">{{ product.type }}</span>
+        <p class="muted">{{ product.description }}</p>
+        <div class="card-footer">
+            <strong class="price">{{ product.price | eur }}</strong>
+            <form method="post" action="/cart/add" class="inline add-form">
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <input type="hidden" name="next" value="{{ request.url.path }}">
+                <input type="number" name="quantity" value="1" min="1" max="99" class="qty-input" aria-label="Quantity">
+                <button type="submit" class="btn btn-small">Add</button>
+            </form>
+        </div>
+    </div>
+</div>

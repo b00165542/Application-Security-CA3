@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Menu{% endblock %}
+{% block content %}
+<h1>Menu</h1>
+<div class="filters">
+    <a class="pill {% if not selected_type %}active{% endif %}" href="/products">All</a>
+    <a class="pill {% if selected_type == 'coffee' %}active{% endif %}" href="/products?type=coffee">Coffee</a>
+    <a class="pill {% if selected_type == 'chocolate' %}active{% endif %}" href="/products?type=chocolate">Hot Chocolate</a>
+</div>
+
+{% if products %}
+<div class="grid">
+    {% for product in products %}{% include "_product_card.html" %}{% endfor %}
+</div>
+{% else %}
+<p class="muted">No products found.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{# Expects `summary` in scope. #}
+<table class="totals">
+    <tr><th>Subtotal</th><td>{{ summary.subtotal | eur }}</td></tr>
+    {% if summary.discount > 0 %}
+        <tr class="discount">
+            <th>Loyalty discount ({{ '%g' % summary.discount_rule.percentage }}%)</th>
+            <td>&minus;{{ summary.discount | eur }}</td>
+        </tr>
+    {% endif %}
+    <tr class="grand-total"><th>Total</th><td>{{ summary.total | eur }}</td></tr>
+</table>
+{% if summary.discount_rule and summary.discount_rule.is_active and summary.discount == 0 %}
+    <p class="muted small">
+        {% if current_user and current_user.role == summary.discount_rule.applies_to_role %}
+            Spend over {{ summary.discount_rule.min_total | eur }} to get {{ '%g' % summary.discount_rule.percentage }}% off.
+        {% elif not current_user %}
+            Loyalty members get {{ '%g' % summary.discount_rule.percentage }}% off orders over {{ summary.discount_rule.min_total | eur }}.
+            <a href="/auth/login?next=/cart">Login</a> or <a href="/auth/register">join</a>.
+        {% endif %}
+    </p>
+{% endif %}

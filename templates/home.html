@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="hero">
+    <h1>Fresh coffee &amp; hot chocolate</h1>
+    <p>Order ahead for pickup or get it delivered to your door. No account needed.</p>
+    {% if discount_rule and discount_rule.is_active %}
+        <p class="promo">
+            Loyalty members get <strong>{{ '%g' % discount_rule.percentage }}% off</strong>
+            every order over <strong>{{ discount_rule.min_total | eur }}</strong>.
+            {% if not current_user %}<a href="/auth/register">Join for free</a>.{% endif %}
+        </p>
+    {% endif %}
+    <a class="btn" href="/products">Browse the full menu</a>
+</section>
+
+<h2>Coffee</h2>
+{% if coffees %}
+<div class="grid">
+    {% for product in coffees %}{% include "_product_card.html" %}{% endfor %}
+</div>
+{% else %}
+<p class="muted">No coffees on the menu yet.</p>
+{% endif %}
+
+<h2>Hot Chocolate</h2>
+{% if chocolates %}
+<div class="grid">
+    {% for product in chocolates %}{% include "_product_card.html" %}{% endfor %}
+</div>
+{% else %}
+<p class="muted">No hot chocolates on the menu yet.</p>
+{% endif %}
+{% endblock %}

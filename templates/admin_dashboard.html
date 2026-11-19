@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Admin dashboard</h1>
+
+<div class="stats">
+    <div class="card padded stat"><span class="stat-value">{{ stats.total_orders }}</span><span class="muted">orders</span></div>
+    <div class="card padded stat"><span class="stat-value">{{ stats.active_orders }}</span><span class="muted">active</span></div>
+    <div class="card padded stat"><span class="stat-value">{{ stats.revenue | eur }}</span><span class="muted">revenue</span></div>
+    <div class="card padded stat"><a class="btn" href="/orders/dashboard">Open orders dashboard</a></div>
+</div>
+
+<!-- Discount rules -->
+<section id="discount" class="card padded">
+    <h2>Loyalty discount</h2>
+    <form method="post" action="/admin/discount" class="inline-form wrap">
+        <label>Discount %
+            <input type="number" name="percentage" step="0.01" min="0" max="100"
+                   value="{{ '%g' % discount_rule.percentage if discount_rule else 20 }}" required>
+        </label>
+        <label>Applies when cart total exceeds (€)
+            <input type="number" name="min_total" step="0.01" min="0"
+                   value="{{ '%.2f' % discount_rule.min_total if discount_rule else '20.00' }}" required>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="is_active" value="true" {% if not discount_rule or discount_rule.is_active %}checked{% endif %}>
+            Enabled
+        </label>
+        <button type="submit" class="btn btn-small">Save discount</button>
+    </form>
+</section>
+
+<!-- Products -->
+<section id="products" class="card padded">
+    <div class="section-head">
+        <h2>Products</h2>
+        <a class="btn btn-small" href="/products/new">+ Add product</a>
+    </div>
+    <table class="table">
+        <thead><tr><th>Image</th><th>Name</th><th>Type</th><th>Price</th><th>Upload image</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for product in products %}
+            <tr>
+                <td><img class="thumb" src="{{ url_for('static', path=(product.image_path or ('images/placeholder-' ~ product.type ~ '.svg'))) }}" alt=""></td>
+                <td><a href="/products/{{ product.id }}">{{ product.name }}</a></td>
+                <td>{{ product.type }}</td>
+                <td>{{ product.price | eur }}</td>
+                <td>
+                    <form method="post" action="/products/{{ product.id }}/image" enctype="multipart/form-data" class="inline">
+                        <input type="file" name="image" accept=".png,.jpg,.jpeg,.gif,.webp" required>
+                        <button type="submit" class="btn btn-small btn-secondary">Upload</button>
+                    </form>
+                </td>
+                <td class="nowrap">
+                    <a class="btn btn-small btn-secondary" href="/products/{{ product.id }}/edit">Edit</a>
+                    <form method="post" action="/products/{{ product.id }}/delete" class="inline"
+                          onsubmit="return confirm('Delete this product?');">
+                        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" class="muted">No products yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- Users -->
+<section id="users" class="card padded">
+    <h2>Users</h2>
+    <table class="table">
+        <thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Change role</th><th></th></tr></thead>
+        <tbody>
+        {% for user in users %}
+            <tr>
+                <td>{{ user.username }}{% if user.id == current_user.id %} <small class="muted">(you)</small>{% endif %}</td>
+                <td><span class="tag">{{ user.role }}</span></td>
+                <td>{{ user.created_at | dt }}</td>
+                <td>
+                    <form method="post" action="/admin/users/{{ user.id }}/role" class="inline">
+                        <select name="role" aria-label="Role">
+                            {% for r in roles %}
+                                <option value="{{ r }}" {% if r == user.role %}selected{% endif %}>{{ r }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-small btn-secondary">Save</button>
+                    </form>
+                </td>
+                <td>
+                    {% if user.id != current_user.id %}
+                        <form method="post" action="/admin/users/{{ user.id }}/delete" class="inline"
+                              onsubmit="return confirm('Delete this user?');">
+                            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Create user</h3>
+    <form method="post" action="/admin/users" class="inline-form wrap">
+        <label>Username
+            <input type="text" name="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.\-]+">
+        </label>
+        <label>Password
+            <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+        </label>
+        <label>Role
+            <select name="role">
+                {% for r in roles %}<option value="{{ r }}" {% if r == 'staff' %}selected{% endif %}>{{ r }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="btn btn-small">Create user</button>
+    </form>
+</section>
+{% endblock %}

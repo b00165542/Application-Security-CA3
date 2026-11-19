@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Join Loyalty{% endblock %}
+{% block content %}
+<div class="narrow card padded">
+    <h1>Join the loyalty programme</h1>
+    <p class="muted">Members can view their order history and get a discount on larger orders.</p>
+    <form method="post" action="/auth/register" class="stacked">
+        <label>Username
+            <input type="text" name="username" value="{{ username or '' }}" required minlength="3" maxlength="32"
+                   pattern="[A-Za-z0-9_.\-]+" title="Letters, numbers, dots, dashes and underscores" autocomplete="username">
+        </label>
+        <label>Password <small class="muted">(8&ndash;72 characters)</small>
+            <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+        </label>
+        <label>Confirm password
+            <input type="password" name="confirm_password" required minlength="8" maxlength="72" autocomplete="new-password">
+        </label>
+        <button type="submit" class="btn">Create account</button>
+    </form>
+    <p>Already a member? <a href="/auth/login">Login</a>.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}My Orders{% endblock %}
+{% block content %}
+<h1>My orders</h1>
+{% if orders %}
+    {% for order in orders %}
+        <div class="card padded order-card">
+            <div class="order-head">
+                <h3><a href="/orders/{{ order.id }}">Order #{{ order.id }}</a></h3>
+                <span class="status status-{{ order.status }}">{{ order.status }}</span>
+            </div>
+            <p class="muted small">{{ order.created_at | dt }} &middot; {{ order.order_type | capitalize }}</p>
+            {% include "_order_items.html" %}
+        </div>
+    {% endfor %}
+{% else %}
+    <p class="muted">You have not placed any orders yet.</p>
+    <a class="btn" href="/products">Browse the menu</a>
+{% endif %}
+{% endblock %}

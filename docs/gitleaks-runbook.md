@@ -229,7 +229,7 @@ Optional extra layers:
 
 Gitleaks detects things that *look like* secrets. It won't catch:
 
-- **Weak hard-coded passwords**, such as the `admin12345` fallback for `ADMIN_PASSWORD` in `main.py`. These have to be found by code review.
+- **Weak hard-coded passwords**, such as `password = "admin12345"`. Gitleaks treats them as ordinary strings, so they have to be found by code review.
 - Secrets in formats it has no rule for, or that are obfuscated or split across lines.
 - Secrets that never enter git (shell history, logs, screenshots).
 

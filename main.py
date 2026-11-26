@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -22,6 +23,7 @@ from database import Base, SessionLocal, engine, get_db
 from models import DiscountRule, Product, User, UserRole
 from routers import admin, auth as auth_router, cart, orders, products
 from routers.cart import LOYALTY_DISCOUNT_RULE_ID
+from schemas import UserCreate, format_validation_errors
 from templating import IMAGES_DIR, STATIC_DIR, flash, render
 
 logger = logging.getLogger("coffee_shop")
@@ -50,6 +52,55 @@ DEMO_PRODUCTS = [
 ]
 
 
+class ConfigurationError(RuntimeError):
+    """Raised at startup when required configuration is missing or invalid."""
+
+
+# Seeded accounts: env var prefix, role, and the hint shown when the variables are missing.
+# There are deliberately no default credentials: a missing or weak value stops startup
+# instead of creating an account with a guessable password.
+ADMIN_ACCOUNT = ("ADMIN", UserRole.ADMIN.value, "to create the first admin account (none exists yet)")
+DEMO_ACCOUNTS = [
+    ("DEMO_STAFF", UserRole.STAFF.value, "to create the demo staff account, or set SEED_DEMO_DATA=false"),
+    ("DEMO_LOYALTY", UserRole.LOYALTY.value, "to create the demo loyalty account, or set SEED_DEMO_DATA=false"),
+]
+
+
+def _credentials_from_env(prefix: str, reason: str) -> UserCreate:
+    """Read <prefix>_USERNAME / <prefix>_PASSWORD and validate them like a registration."""
+    user_var, pass_var = f"{prefix}_USERNAME", f"{prefix}_PASSWORD"
+    username = os.getenv(user_var, "").strip()
+    password = os.getenv(pass_var, "")
+
+    missing = [name for name, value in ((user_var, username), (pass_var, password)) if not value]
+    if missing:
+        raise ConfigurationError(
+            f"{' and '.join(missing)} {'is' if len(missing) == 1 else 'are'} not set. "
+            f"Set {user_var} and {pass_var} {reason}, then restart the app."
+        )
+
+    try:
+        return UserCreate(username=username, password=password)
+    except ValidationError as exc:
+        details = "; ".join(format_validation_errors(exc))
+        raise ConfigurationError(f"Invalid {user_var} / {pass_var}: {details}") from None
+
+
+def _ensure_seeded_user(db: Session, prefix: str, role: str, reason: str, *, must_be_new: bool) -> None:
+    """Create the account described by the env vars, refusing to clash with another role."""
+    creds = _credentials_from_env(prefix, reason)
+    existing = db.scalar(select(User).where(User.username == creds.username))
+    if existing is None:
+        db.add(User(username=creds.username, password_hash=hash_password(creds.password), role=role))
+        db.flush()  # make the new account visible to the clash checks for the next accounts
+        logger.info("Created %s account '%s'.", role, creds.username)
+    elif must_be_new or existing.role != role:
+        raise ConfigurationError(
+            f"{prefix}_USERNAME '{creds.username}' is already used by an existing {existing.role} account. "
+            f"Choose a different {prefix}_USERNAME."
+        )
+
+
 def seed_initial_data(db: Session) -> None:
     """Create the discount rule, a first admin, and (optionally) demo data."""
     if db.get(DiscountRule, LOYALTY_DISCOUNT_RULE_ID) is None:
@@ -66,25 +117,18 @@ def seed_initial_data(db: Session) -> None:
 
     has_admin = db.scalar(select(func.count(User.id)).where(User.role == UserRole.ADMIN.value))
     if not has_admin:
-        admin_username = os.getenv("ADMIN_USERNAME", "admin")
-        admin_password = os.getenv("ADMIN_PASSWORD", "admin12345")
-        db.add(User(username=admin_username, password_hash=hash_password(admin_password), role=UserRole.ADMIN.value))
-        logger.info("Created initial admin account '%s'.", admin_username)
+        prefix, role, reason = ADMIN_ACCOUNT
+        _ensure_seeded_user(db, prefix, role, reason, must_be_new=True)
 
     if SEED_DEMO_DATA:
+        # Existing demo accounts are left as they are; their password is not reset from the env.
+        for prefix, role, reason in DEMO_ACCOUNTS:
+            _ensure_seeded_user(db, prefix, role, reason, must_be_new=False)
+
         if db.scalar(select(func.count(Product.id))) == 0:
             for name, ptype, price, description in DEMO_PRODUCTS:
                 db.add(Product(name=name, type=ptype, price=price, description=description))
             logger.info("Seeded %d demo products.", len(DEMO_PRODUCTS))
-
-        demo_users = [
-            ("staff", "staff12345", UserRole.STAFF.value),
-            ("loyal", "loyal12345", UserRole.LOYALTY.value),
-        ]
-        for username, password, role in demo_users:
-            if db.scalar(select(User.id).where(User.username == username)) is None:
-                db.add(User(username=username, password_hash=hash_password(password), role=role))
-                logger.info("Created demo %s account '%s'.", role, username)
 
     db.commit()
 
@@ -94,7 +138,11 @@ async def lifespan(app: FastAPI):
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        seed_initial_data(db)
+        try:
+            seed_initial_data(db)
+        except ConfigurationError as exc:
+            logger.critical("Startup aborted: %s", exc)
+            raise
     yield
     engine.dispose()
 

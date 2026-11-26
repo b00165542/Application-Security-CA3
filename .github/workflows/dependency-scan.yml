@@ -1,0 +1,54 @@
+name: Dependency scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  # New vulnerabilities are published every day, even when requirements.txt
+  # doesn't change, so also run once a week (Mondays 06:00 UTC).
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    env:
+      PIP_AUDIT_VERSION: "2.10.1"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # pip-audit runs on this runner. It resolves requirements.txt (including
+      # transitive dependencies) and looks up package names and versions in the
+      # public PyPI / OSV advisory databases. No source code is uploaded and no
+      # account or token is needed.
+      - name: Install pip-audit
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pip-audit"
+          "$RUNNER_TEMP/pip-audit/bin/pip" install --quiet "pip-audit==${PIP_AUDIT_VERSION}"
+          echo "$RUNNER_TEMP/pip-audit/bin" >> "$GITHUB_PATH"
+
+      - name: Write report
+        run: |
+          pip-audit --version
+          pip-audit -r requirements.txt --progress-spinner off -f json -o pip-audit.json || true
+          {
+            echo "## Dependency vulnerabilities (pip-audit)"
+            pip-audit -r requirements.txt --progress-spinner off -f markdown || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Fails the job if any dependency has a known vulnerability.
+      - name: Scan
+        run: pip-audit -r requirements.txt --progress-spinner off --strict --desc on
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pip-audit-report
+          path: pip-audit.json
+          if-no-files-found: ignore

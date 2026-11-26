@@ -2,6 +2,8 @@
 
 This runbook covers how secret scanning works in this repository, how to run it locally, and what to do when it finds something.
 
+For static code analysis (Bandit and Semgrep), see the [static analysis runbook](sast-runbook.md).
+
 | Item | Value |
 | --- | --- |
 | Tool | [Gitleaks](https://github.com/gitleaks/gitleaks) (open source, MIT) |

@@ -85,31 +85,86 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. (Optional) Configure environment variables
+### 3. Configure environment variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SECRET_KEY` | random on each start | Signs the session cookie. Set it to keep users logged in across restarts. |
 | `DATABASE_URL` | `sqlite:///./coffee_shop.db` | Database location |
-| `ADMIN_USERNAME` | `admin` | Username of the first admin, created if no admin exists |
-| `ADMIN_PASSWORD` | `admin12345` | Password of the first admin |
-| `SEED_DEMO_DATA` | `true` | Seed demo products and the demo `staff` and `loyal` accounts |
+| `ADMIN_USERNAME` | **required on first start** | Username of the first admin, created if no admin exists (3–32 chars: letters, digits, `_ . -`) |
+| `ADMIN_PASSWORD` | **required on first start** | Password of the first admin (8–72 chars) |
+| `SEED_DEMO_DATA` | `true` | Seed demo products and the demo staff and loyalty accounts |
+| `DEMO_STAFF_USERNAME` | **required while `SEED_DEMO_DATA` is on** | Username of the demo staff account |
+| `DEMO_STAFF_PASSWORD` | **required while `SEED_DEMO_DATA` is on** | Password of the demo staff account (8–72 chars) |
+| `DEMO_LOYALTY_USERNAME` | **required while `SEED_DEMO_DATA` is on** | Username of the demo loyalty account |
+| `DEMO_LOYALTY_PASSWORD` | **required while `SEED_DEMO_DATA` is on** | Password of the demo loyalty account (8–72 chars) |
 
-PowerShell example:
-```powershell
-$env:SECRET_KEY = "change-me-to-a-long-random-string"
+There are no default accounts or passwords. All usernames and passwords follow the registration rules
+(username 3–32 chars: letters, digits, `_ . -`; password 8–72 chars), and each username must be unique.
+If a required value is missing, invalid, or clashes with another account, the app refuses to start and
+logs the reason, for example:
+
 ```
-Bash example:
+CRITICAL:coffee_shop:Startup aborted: ADMIN_PASSWORD is not set. Set ADMIN_USERNAME and ADMIN_PASSWORD to create the first admin account (none exists yet), then restart the app.
+CRITICAL:coffee_shop:Startup aborted: DEMO_STAFF_USERNAME and DEMO_STAFF_PASSWORD are not set. Set DEMO_STAFF_USERNAME and DEMO_STAFF_PASSWORD to create the demo staff account, or set SEED_DEMO_DATA=false, then restart the app.
+```
+
+- The `ADMIN_*` variables are only needed until the first admin exists.
+- The `DEMO_*` variables are needed on every start while `SEED_DEMO_DATA` is on. A demo account that
+  already exists is left unchanged, so changing `DEMO_*_PASSWORD` later does not reset its password.
+- To run without demo accounts or products, set `SEED_DEMO_DATA=false`; the `DEMO_*` variables are then ignored.
+
+#### Set them with a `.env` file (recommended)
+
+1. Copy the template. [`.env.example`](.env.example) is committed; your `.env` is git-ignored and must never be committed.
+
+   ```powershell
+   Copy-Item .env.example .env     # PowerShell
+   ```
+   ```bash
+   cp .env.example .env            # Bash
+   ```
+
+2. Open `.env` and replace **every** placeholder value (`SECRET_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, ...)
+   with your own. Do not start the app with the placeholders left in: they are valid values, so they would
+   become the real usernames and passwords. To generate a `SECRET_KEY`:
+
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+3. If you previously ran the app with the old built-in accounts, delete `coffee_shop.db` so the accounts are
+   recreated from your new values. Existing accounts are never updated from the environment.
+
+The app does not read `.env` by itself. Uvicorn loads it with the `--env-file` option (see step 4), using
+`python-dotenv`, which is installed with `uvicorn[standard]`.
+
+#### Alternative: set them in the current shell
+
+Variables set this way only last for the current terminal session.
+
+```powershell
+$env:ADMIN_USERNAME = "your-admin-name"     # PowerShell; repeat for each variable
+```
 ```bash
-export SECRET_KEY="change-me-to-a-long-random-string"
+export ADMIN_USERNAME="your-admin-name"     # Bash; repeat for each variable
 ```
 
 ### 4. Start the server
 
+With a `.env` file:
+
+```bash
+uvicorn main:app --reload --env-file .env
+```
+
+With variables already set in the shell:
+
 ```bash
 uvicorn main:app --reload
 ```
-(or `python main.py`)
+
+`python main.py` also works, but only with variables set in the shell, because it does not load `.env`.
 
 Open **http://127.0.0.1:8000** in your browser.
 
@@ -120,11 +175,11 @@ an admin account and, unless disabled, demo data.
 
 | Role | Username | Password |
 |------|----------|----------|
-| Admin | `admin` | `admin12345` |
-| Staff | `staff` | `staff12345` |
-| Loyalty | `loyal` | `loyal12345` |
+| Admin | value of `ADMIN_USERNAME` | value of `ADMIN_PASSWORD` |
+| Staff | value of `DEMO_STAFF_USERNAME` | value of `DEMO_STAFF_PASSWORD` |
+| Loyalty | value of `DEMO_LOYALTY_USERNAME` | value of `DEMO_LOYALTY_PASSWORD` |
 
-Change these credentials, or set `SEED_DEMO_DATA=false` and `ADMIN_PASSWORD`, before using the app anywhere other than your own machine.
+Set `SEED_DEMO_DATA=false` before using the app anywhere other than your own machine, so the demo staff and loyalty accounts are not created.
 
 ### Useful URLs
 

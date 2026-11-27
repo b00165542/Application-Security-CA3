@@ -1,0 +1,87 @@
+name: Static analysis
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bandit:
+    name: Bandit
+    runs-on: ubuntu-latest
+    env:
+      BANDIT_VERSION: "1.9.4"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # Bandit runs entirely on this runner and works offline: no code is
+      # uploaded anywhere and no account or token is needed.
+      - name: Install Bandit
+        run: |
+          python3 -m venv "$RUNNER_TEMP/bandit"
+          "$RUNNER_TEMP/bandit/bin/pip" install --quiet "bandit[sarif]==${BANDIT_VERSION}"
+          echo "$RUNNER_TEMP/bandit/bin" >> "$GITHUB_PATH"
+
+      - name: Write report
+        run: bandit -r . -x ./.venv -f sarif -o bandit.sarif --exit-zero
+
+      # Fails the job if Bandit reports any issue (any severity).
+      - name: Scan
+        run: |
+          bandit --version
+          bandit -r . -x ./.venv -f txt
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bandit-report
+          path: bandit.sarif
+          if-no-files-found: ignore
+
+  # Complements Bandit: Semgrep also checks templates, workflow files and
+  # OWASP Top 10 patterns that Bandit (Python-only) does not cover.
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    env:
+      SEMGREP_VERSION: "1.183.0"
+      # Never send usage metrics or check for updates.
+      SEMGREP_SEND_METRICS: "off"
+      SEMGREP_ENABLE_VERSION_CHECK: "0"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # Semgrep Community Edition runs entirely on this runner. Only the public
+      # rule packs below are downloaded from the Semgrep registry; no code is uploaded
+      # and no account or token is needed.
+      - name: Install Semgrep
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --quiet "semgrep==${SEMGREP_VERSION}"
+          echo "$RUNNER_TEMP/semgrep/bin" >> "$GITHUB_PATH"
+
+      # Fails the job if Semgrep reports any finding.
+      - name: Scan
+        run: |
+          semgrep --version
+          semgrep scan \
+            --config p/python \
+            --config p/owasp-top-ten \
+            --metrics=off \
+            --error \
+            --text \
+            --sarif-output=semgrep.sarif
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: semgrep-report
+          path: semgrep.sarif
+          if-no-files-found: ignore
